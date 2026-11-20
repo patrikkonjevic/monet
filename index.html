@@ -211,12 +211,17 @@
     <div class="max-w-[1750px] mx-auto px-3 sm:px-4 py-2.5 flex flex-col gap-2">
       <!-- Centered Title Row -->
       <div class="relative flex items-center justify-center min-h-[32px]">
-        <!-- Year Filter on Desktop Left -->
-        <div class="hidden xl:flex items-center bg-slate-900/90 rounded-xl p-1 border border-slate-800 text-xs font-semibold absolute left-0">
-          <button type="button" onclick="setYearFilter('ALL')" id="yr-ALL" class="yr-btn px-2.5 py-1 rounded-lg bg-emerald-600 text-white">Vše</button>
-          <button type="button" onclick="setYearFilter('2024')" id="yr-2024" class="yr-btn px-2.5 py-1 rounded-lg text-slate-300 hover:text-white">2024</button>
-          <button type="button" onclick="setYearFilter('2025')" id="yr-2025" class="yr-btn px-2.5 py-1 rounded-lg text-slate-300 hover:text-white">2025</button>
-          <button type="button" onclick="setYearFilter('2026')" id="yr-2026" class="yr-btn px-2.5 py-1 rounded-lg text-slate-300 hover:text-white">2026</button>
+        <!-- Logout Lock & Desktop Year Filter on Left -->
+        <div class="flex items-center gap-2 absolute left-0">
+          <button type="button" onclick="handleAuthLogout()" title="Odhlásit se" class="px-2.5 py-1 rounded-xl bg-slate-900 hover:bg-rose-950 border border-slate-800 hover:border-rose-500/50 text-slate-300 hover:text-rose-300 text-xs font-bold transition shadow-sm flex items-center gap-1">
+            <span>🔒</span>
+          </button>
+          <div class="hidden xl:flex items-center bg-slate-900/90 rounded-xl p-1 border border-slate-800 text-xs font-semibold">
+            <button type="button" onclick="setYearFilter('ALL')" id="yr-ALL" class="yr-btn px-2.5 py-1 rounded-lg bg-emerald-600 text-white">Vše</button>
+            <button type="button" onclick="setYearFilter('2024')" id="yr-2024" class="yr-btn px-2.5 py-1 rounded-lg text-slate-300 hover:text-white">2024</button>
+            <button type="button" onclick="setYearFilter('2025')" id="yr-2025" class="yr-btn px-2.5 py-1 rounded-lg text-slate-300 hover:text-white">2025</button>
+            <button type="button" onclick="setYearFilter('2026')" id="yr-2026" class="yr-btn px-2.5 py-1 rounded-lg text-slate-300 hover:text-white">2026</button>
+          </div>
         </div>
 
         <h1 class="text-base sm:text-xl font-black tracking-wider text-center select-none flex items-center gap-1">
@@ -235,9 +240,6 @@
           </button>
           <button type="button" onclick="exportJsonBackup()" class="hidden md:block px-2 py-1 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-300 text-xs font-semibold transition">
             JSON
-          </button>
-          <button type="button" onclick="handleAuthLogout()" title="Odhlásit se" class="px-2 py-1 rounded-xl bg-slate-900 hover:bg-rose-950 border border-slate-800 hover:border-rose-500/50 text-slate-300 hover:text-rose-300 text-xs font-semibold transition">
-            🔒
           </button>
         </div>
       </div>
@@ -449,7 +451,7 @@
     <section id="mobileMonthQuickGridSection" class="md:hidden bg-slate-900/90 border border-slate-800 rounded-2xl p-3 space-y-2.5">
       <div class="flex items-center justify-between">
         <h2 class="text-xs font-extrabold uppercase tracking-wider text-slate-200">
-          📱 Přehled kategorií — <span id="mobActiveMonthLabel" class="text-emerald-400 font-mono">11/26</span>
+          Přehled kategorií — <span id="mobActiveMonthLabel" class="text-emerald-400 font-mono">11/26</span>
         </h2>
       </div>
       <div id="mobileMonthCategoryCards" class="grid grid-cols-2 gap-2"></div>
@@ -457,8 +459,16 @@
 
     <!-- VIEW 1: MAIN BUDGET MATRIX TABLE -->
     <section id="view-matrix" class="bg-slate-900/90 border border-slate-800 rounded-2xl overflow-hidden shadow-lg">
-      <div class="px-4 py-3 border-b border-slate-800 flex flex-wrap items-center justify-between gap-3">
-        <h2 class="text-sm font-bold uppercase tracking-wider text-slate-200">Matice rozpočtu</h2>
+      <div class="px-3 sm:px-4 py-3 border-b border-slate-800 flex flex-wrap items-center justify-between gap-2">
+        <h2 class="text-sm font-bold uppercase tracking-wider text-slate-200">Tabulka</h2>
+        <div class="flex items-center gap-1.5">
+          <select id="matrixFromMonth" onchange="onMatrixPeriodChange()" class="bg-slate-950 border border-slate-700 rounded-lg px-2 py-1 text-xs font-mono text-cyan-300">
+            <option value="">Od: vše</option>
+          </select>
+          <select id="matrixToMonth" onchange="onMatrixPeriodChange()" class="bg-slate-950 border border-slate-700 rounded-lg px-2 py-1 text-xs font-mono text-cyan-300">
+            <option value="">Do: vše</option>
+          </select>
+        </div>
       </div>
 
       <div class="overflow-x-auto max-h-[70vh]">
@@ -1406,10 +1416,30 @@
       return { expense, finance, income, net };
     }
 
+    function onMatrixPeriodChange() {
+      state.yearFilter = 'ALL';
+      document.querySelectorAll('.yr-btn').forEach(b => {
+        b.classList.remove('bg-emerald-600', 'text-white');
+        b.classList.add('text-slate-300');
+      });
+      const allBtn = document.getElementById('yr-ALL');
+      if (allBtn) {
+        allBtn.classList.add('bg-emerald-600', 'text-white');
+        allBtn.classList.remove('text-slate-300');
+      }
+      renderMatrix();
+    }
+
     function getFilteredMonthsDesc() {
-      const all = Object.keys(state.monthsData).sort().reverse();
-      if (state.yearFilter === 'ALL') return all;
-      return all.filter(ym => ym.startsWith(state.yearFilter + '-'));
+      let months = Object.keys(state.monthsData).sort().reverse();
+      const fromYm = document.getElementById('matrixFromMonth')?.value || '';
+      const toYm = document.getElementById('matrixToMonth')?.value || '';
+      if (fromYm) months = months.filter(ym => ym >= fromYm);
+      if (toYm) months = months.filter(ym => ym <= toYm);
+      if (!fromYm && !toYm && state.yearFilter !== 'ALL') {
+        months = months.filter(ym => ym.startsWith(state.yearFilter + '-'));
+      }
+      return months;
     }
 
     function getTripAllItems(tripId) {
@@ -1996,6 +2026,23 @@
       const body = document.getElementById('matrixBody');
       const foot = document.getElementById('matrixFoot');
       if (!head || !body || !foot) return;
+
+      const allDesc = Object.keys(state.monthsData).sort().reverse();
+      const allAsc = [...allDesc].reverse();
+      const fromSel = document.getElementById('matrixFromMonth');
+      const toSel = document.getElementById('matrixToMonth');
+      if (fromSel) {
+        const prevFrom = fromSel.value || '';
+        fromSel.innerHTML = `<option value="">Od: vše</option>` +
+          allAsc.map(ym => `<option value="${ym}">${formatMonthLabel(ym)}</option>`).join('');
+        fromSel.value = allAsc.includes(prevFrom) ? prevFrom : '';
+      }
+      if (toSel) {
+        const prevTo = toSel.value || '';
+        toSel.innerHTML = `<option value="">Do: vše</option>` +
+          allDesc.map(ym => `<option value="${ym}">${formatMonthLabel(ym)}</option>`).join('');
+        toSel.value = allDesc.includes(prevTo) ? prevTo : '';
+      }
 
       const months = getFilteredMonthsDesc();
 
@@ -2856,59 +2903,84 @@
     // =========================================================================
     function attachLongPressReorder(container, itemSelector, dragClass, idxAttr, onReorder) {
       if (!container) return;
+      container._reorderCfg = { itemSelector, dragClass, idxAttr, onReorder };
+      if (container._reorderBound) return;
+      container._reorderBound = true;
+
       let timer = null;
       let draggingIdx = null;
       let targetIdx = null;
       let startX = 0;
       let startY = 0;
+      let suppressClickUntil = 0;
+
+      const clearHighlights = () => {
+        const cfg = container._reorderCfg;
+        container.querySelectorAll(cfg.itemSelector).forEach(el => {
+          el.classList.remove(cfg.dragClass, 'ring-2', 'ring-emerald-400');
+        });
+      };
 
       const clearDrag = () => {
         if (timer) { clearTimeout(timer); timer = null; }
-        container.querySelectorAll(itemSelector).forEach(el => el.classList.remove(dragClass));
+        clearHighlights();
         draggingIdx = null;
         targetIdx = null;
       };
 
       const startPress = (e) => {
         if (e.target.closest('input, select, button, textarea')) return;
-        const row = e.target.closest(itemSelector);
+        const cfg = container._reorderCfg;
+        const row = e.target.closest(cfg.itemSelector);
         if (!row) return;
         const pt = e.touches ? e.touches[0] : e;
         startX = pt.clientX;
         startY = pt.clientY;
-        const idx = Number(row.getAttribute(idxAttr));
+        const idx = Number(row.getAttribute(cfg.idxAttr));
         timer = setTimeout(() => {
           draggingIdx = idx;
           targetIdx = idx;
-          row.classList.add(dragClass);
+          row.classList.add(cfg.dragClass);
           if (navigator.vibrate) navigator.vibrate(25);
-        }, 250);
+        }, 300);
       };
 
       const movePress = (e) => {
+        if (timer === null && draggingIdx === null) return;
         const pt = e.touches ? e.touches[0] : e;
         if (draggingIdx === null) {
-          if (timer && (Math.abs(pt.clientX - startX) > 10 || Math.abs(pt.clientY - startY) > 10)) {
+          if (Math.abs(pt.clientX - startX) > 10 || Math.abs(pt.clientY - startY) > 10) {
             clearTimeout(timer);
             timer = null;
           }
           return;
         }
         if (e.cancelable) e.preventDefault();
+        const cfg = container._reorderCfg;
         const elUnder = document.elementFromPoint(pt.clientX, pt.clientY);
-        const rowUnder = elUnder ? elUnder.closest(itemSelector) : null;
+        const rowUnder = elUnder ? elUnder.closest(cfg.itemSelector) : null;
         if (rowUnder && container.contains(rowUnder)) {
-          const newIdx = Number(rowUnder.getAttribute(idxAttr));
-          if (!isNaN(newIdx)) targetIdx = newIdx;
+          const newIdx = Number(rowUnder.getAttribute(cfg.idxAttr));
+          if (!isNaN(newIdx) && newIdx !== targetIdx) {
+            targetIdx = newIdx;
+            container.querySelectorAll(cfg.itemSelector).forEach(el => {
+              el.classList.remove('ring-2', 'ring-emerald-400');
+            });
+            if (targetIdx !== draggingIdx) {
+              rowUnder.classList.add('ring-2', 'ring-emerald-400');
+            }
+          }
         }
       };
 
       const endPress = () => {
-        if (draggingIdx !== null && targetIdx !== null && draggingIdx !== targetIdx) {
+        if (draggingIdx !== null) {
+          suppressClickUntil = Date.now() + 400;
           const from = draggingIdx;
           const to = targetIdx;
+          const cb = container._reorderCfg.onReorder;
           clearDrag();
-          onReorder(from, to);
+          if (to !== null && from !== to) cb(from, to);
         } else {
           clearDrag();
         }
@@ -2921,8 +2993,14 @@
       container.addEventListener('mousedown', startPress);
       window.addEventListener('mousemove', movePress);
       window.addEventListener('mouseup', endPress);
+      container.addEventListener('click', (e) => {
+        if (Date.now() < suppressClickUntil) {
+          e.preventDefault();
+          e.stopPropagation();
+        }
+      }, true);
       container.addEventListener('contextmenu', (e) => {
-        if (draggingIdx !== null) e.preventDefault();
+        if (timer !== null || draggingIdx !== null) e.preventDefault();
       });
     }
 
