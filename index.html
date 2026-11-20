@@ -115,6 +115,34 @@
 </head>
 <body class="min-h-screen flex flex-col pb-24">
 
+  <!-- AUTH LOGIN OVERLAY -->
+  <div id="authOverlay" class="fixed inset-0 z-[100] bg-slate-950 flex items-center justify-center p-4">
+    <div class="bg-slate-900 border border-indigo-500/40 rounded-2xl max-w-sm w-full p-6 shadow-2xl space-y-5">
+      <div class="text-center space-y-1">
+        <h2 class="text-xl font-black tracking-wider flex items-center justify-center gap-1">
+          <span>💲💲💲</span><span class="monet-brand-title">MONET</span><span>💲💲💲</span>
+        </h2>
+        <p class="text-xs text-slate-400">Přihlas se pro přístup ke svému rozpočtu</p>
+      </div>
+      <form id="authLoginForm" onsubmit="handleAuthLogin(event)" class="space-y-3">
+        <div>
+          <label class="block text-xs font-bold text-slate-300 mb-1">E-mail</label>
+          <input type="email" id="authEmail" required autocomplete="email" placeholder="tvuj@email.cz"
+            class="w-full bg-slate-950 border border-slate-700 focus:border-cyan-500 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none" />
+        </div>
+        <div>
+          <label class="block text-xs font-bold text-slate-300 mb-1">Heslo</label>
+          <input type="password" id="authPassword" required autocomplete="current-password" placeholder="••••••••"
+            class="w-full bg-slate-950 border border-slate-700 focus:border-cyan-500 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none" />
+        </div>
+        <div id="authErrorMsg" class="hidden text-xs font-bold text-rose-400 bg-rose-950/60 border border-rose-500/40 rounded-xl px-3 py-2"></div>
+        <button type="submit" id="authSubmitBtn" class="w-full py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-sm transition shadow-lg">
+          🔐 Přihlásit se
+        </button>
+      </form>
+    </div>
+  </div>
+
   <!-- TOAST NOTIFICATIONS -->
   <div id="toastContainer" class="fixed bottom-20 right-4 z-[80] flex flex-col gap-2 max-w-sm w-full pointer-events-none px-4 sm:px-0"></div>
 
@@ -207,6 +235,9 @@
           </button>
           <button type="button" onclick="exportJsonBackup()" class="hidden md:block px-2 py-1 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-300 text-xs font-semibold transition">
             JSON
+          </button>
+          <button type="button" onclick="handleAuthLogout()" title="Odhlásit se" class="px-2 py-1 rounded-xl bg-slate-900 hover:bg-rose-950 border border-slate-800 hover:border-rose-500/50 text-slate-300 hover:text-rose-300 text-xs font-semibold transition">
+            🔒
           </button>
         </div>
       </div>
@@ -3958,14 +3989,52 @@
       setInterval(update, 30000);
     }
 
-    document.addEventListener('DOMContentLoaded', async () => {
-      initSupabase();
-      initModalScrollGuard();
+    async function bootAuthenticatedApp(showWelcome = false) {
+      document.getElementById('authOverlay')?.classList.add('hidden');
       loadLocalState();
       normalizeAndMigrateState();
       renderAll();
+      await pullFromSupabase(showWelcome);
+    }
+
+    async function handleAuthLogin(e) {
+      e.preventDefault();
+      if (!supabaseClient) return;
+      const email = (document.getElementById('authEmail')?.value || '').trim();
+      const password = document.getElementById('authPassword')?.value || '';
+      const errBox = document.getElementById('authErrorMsg');
+      const btn = document.getElementById('authSubmitBtn');
+      if (errBox) errBox.classList.add('hidden');
+      if (btn) { btn.disabled = true; btn.textContent = 'Přihlašuji...'; }
+
+      const { error } = await supabaseClient.auth.signInWithPassword({ email, password });
+      if (btn) { btn.disabled = false; btn.textContent = '🔐 Přihlásit se'; }
+
+      if (error) {
+        if (errBox) {
+          errBox.textContent = '❌ Nesprávný e-mail nebo heslo.';
+          errBox.classList.remove('hidden');
+        }
+        return;
+      }
+      await bootAuthenticatedApp(true);
+    }
+
+    async function handleAuthLogout() {
+      if (supabaseClient) await supabaseClient.auth.signOut();
+      try { localStorage.removeItem(LOCAL_STORAGE_KEY); } catch {}
+      location.reload();
+    }
+
+    document.addEventListener('DOMContentLoaded', async () => {
+      initSupabase();
+      initModalScrollGuard();
       startLiveClock();
-      await pullFromSupabase(false);
+      if (!supabaseClient) return;
+      const { data: { session } } = await supabaseClient.auth.getSession();
+      if (session) {
+        await bootAuthenticatedApp(false);
+      }
     });
   </script>
 </body>
