@@ -1092,12 +1092,12 @@
       if (low.includes('dps') || low.includes('dip') || low.includes('penzij')) return 'DPS';
       if (low.includes('btc') || low.includes('bitcoin') || low.includes('krypto') || low.includes('eth') || low.includes('sol')) return 'Krypto';
       if (low.includes('byt') || low.includes('hypot') || low.includes('nemovit')) return 'Investiční byt';
-      if (low.includes('spoř') || low.includes('spor') || low.includes('účet') || low.includes('ucet')) return 'Spořicí účet';
       if (low.includes('život') || low.includes('zivot')) {
         const found = (state.assetClasses || []).find(a => a.name.toLowerCase().includes('život') || a.name.toLowerCase().includes('zivot'));
         if (found) return found.name;
       }
       if (low.includes('portu') || low.includes('trading') || low.includes('t212') || low.includes('etf') || low.includes('akci')) return 'Akcie';
+      if (low.includes('spoř') || low.includes('spor') || low.includes('účet') || low.includes('ucet')) return 'Spořicí účet';
       return null;
     }
 
@@ -2262,9 +2262,9 @@
       const list = [];
       Object.keys(state.monthsData).sort().reverse().forEach(ym => {
         const arr = state.monthsData[ym]?.['Finance'] || [];
-        arr.forEach((it, idx) => {
-          list.push({ ...it, ym, origIdx: idx });
-        });
+        for (let idx = arr.length - 1; idx >= 0; idx--) {
+          list.push({ ...arr[idx], ym, origIdx: idx });
+        }
       });
       return list;
     }
